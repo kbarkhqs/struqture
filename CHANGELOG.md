@@ -4,7 +4,9 @@ This changelog track changes to the struqture project starting at version v1.0.0
 
 ## Unreleased
 
-## 2.5
+* Updated dependencies to fix `aws-lc-sys` security vulnerability.
+
+## 2.5.0
 
 * Updated pyo3 dependency to 0.28.
 
