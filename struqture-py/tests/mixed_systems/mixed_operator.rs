@@ -36,7 +36,7 @@ fn new_system(
     system_type
         .call1((number_spins, number_bosons, number_fermions))
         .unwrap()
-        .downcast::<MixedOperatorWrapper>()
+        .cast::<MixedOperatorWrapper>()
         .unwrap()
         .to_owned()
 }
@@ -44,8 +44,8 @@ fn new_system(
 /// Test default function of MixedOperatorWrapper
 #[test]
 fn test_default_partialeq_debug_clone() {
-    pyo3::prepare_freethreaded_python();
-    Python::with_gil(|py| {
+    Python::initialize();
+    Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -76,8 +76,8 @@ fn test_default_partialeq_debug_clone() {
 /// Test number_bosons function of MixedOperator
 #[test]
 fn test_number_bosons_current() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -87,19 +87,21 @@ fn test_number_bosons_current() {
             .unwrap();
 
         let number_system = system.call_method0("current_number_spins").unwrap();
-        let comparison = bool::extract_bound(
-            &number_system
+        let comparison = bool::extract(
+            number_system
                 .call_method1("__eq__", (vec![1_u64],))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
 
         let number_system = system.call_method0("current_number_bosonic_modes").unwrap();
-        let comparison = bool::extract_bound(
-            &number_system
+        let comparison = bool::extract(
+            number_system
                 .call_method1("__eq__", (vec![2_u64],))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
@@ -107,10 +109,11 @@ fn test_number_bosons_current() {
         let number_system = system
             .call_method0("current_number_fermionic_modes")
             .unwrap();
-        let comparison = bool::extract_bound(
-            &number_system
+        let comparison = bool::extract(
+            number_system
                 .call_method1("__eq__", (vec![1_u64],))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
@@ -120,15 +123,20 @@ fn test_number_bosons_current() {
 /// Test empty_clone function of MixedOperator
 #[test]
 fn test_empty_clone() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
         let system = new_system(py, number_spins, number_bosons, number_fermions);
         let none_system = system.call_method1("empty_clone", (4,)).unwrap();
-        let comparison =
-            bool::extract_bound(&none_system.call_method1("__eq__", (system,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            none_system
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         let number_spins: usize = 1;
@@ -136,8 +144,13 @@ fn test_empty_clone() {
         let number_fermions: usize = 1;
         let system = new_system(py, number_spins, number_bosons, number_fermions);
         let some_system = system.call_method1("empty_clone", (2,)).unwrap();
-        let comparison =
-            bool::extract_bound(&some_system.call_method1("__eq__", (system,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            some_system
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -145,8 +158,8 @@ fn test_empty_clone() {
 /// Test hermitian_conjugate function of MixedOperator
 #[test]
 fn test_hermitian_conj() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -156,8 +169,13 @@ fn test_hermitian_conj() {
             .unwrap();
 
         let conjugate = system.call_method0("hermitian_conjugate").unwrap();
-        let comparison =
-            bool::extract_bound(&conjugate.call_method1("__eq__", (system,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            conjugate
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -165,8 +183,8 @@ fn test_hermitian_conj() {
 /// Test set and get functions of MixedOperator
 #[test]
 fn boson_system_test_set_get() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let new_system = py.get_type::<MixedOperatorWrapper>();
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
@@ -175,7 +193,7 @@ fn boson_system_test_set_get() {
         let binding = new_system
             .call1((number_spins, number_bosons, number_fermions))
             .unwrap();
-        let system = binding.downcast::<MixedOperatorWrapper>().unwrap();
+        let system = binding.cast::<MixedOperatorWrapper>().unwrap();
         system
             .call_method1("set", ("S0Z:Bc0a1:Fc0a0:", 0.1))
             .unwrap();
@@ -188,26 +206,46 @@ fn boson_system_test_set_get() {
 
         // test access at index 0
         let comp_op = system.call_method1("get", ("S0Z:Bc0a1:Fc0a0:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
         // test access at index 1
         let comp_op = system.call_method1("get", ("S0Z:Bc2c3a1:Fc0a0:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.2,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.2,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
         // test access at index 3
         let comp_op = system
             .call_method1("get", ("S0Z:Bc2c3a1:Fc0a2a3:",))
             .unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.05,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.05,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         // Get zero
         let comp_op = system.call_method1("get", ("S0Z:Bc0a1:Fc0a2:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.0,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.0,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         // Try_set error 1: Key (MixedProduct) cannot be converted from string
@@ -231,8 +269,8 @@ fn boson_system_test_set_get() {
 /// Test add_operator_product and remove functions of MixedOperator
 #[test]
 fn boson_system_test_add_operator_product_remove() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let new_system = py.get_type::<MixedOperatorWrapper>();
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
@@ -240,7 +278,7 @@ fn boson_system_test_add_operator_product_remove() {
         let system = new_system
             .call1((number_spins, number_bosons, number_fermions))
             .unwrap();
-        system.downcast::<MixedOperatorWrapper>().unwrap();
+        system.cast::<MixedOperatorWrapper>().unwrap();
         system
             .call_method1("add_operator_product", ("S0Z:Bc0a1:Fc0a0:", 0.1))
             .unwrap();
@@ -253,35 +291,60 @@ fn boson_system_test_add_operator_product_remove() {
 
         // test access at index 0
         let comp_op = system.call_method1("get", ("S0Z:Bc0a1:Fc0a0:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
         system
             .call_method1("remove", ("S0Z:Bc0a1:Fc0a0:",))
             .unwrap();
         let comp_op = system.call_method1("get", ("S0Z:Bc0a1:Fc0a0:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.0,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.0,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
         // test access at index 1
         let comp_op = system.call_method1("get", ("S0Z:Bc2c3a1:Fc0a0:",)).unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.2,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.2,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
         // test access at index 3
         let comp_op = system
             .call_method1("get", ("S0Z:Bc2c3a1:Fc0a2a3:",))
             .unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.05,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.05,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         // Get zero
         let comp_op = system
             .call_method1("get", ("S0Z1Y:Bc2c3a1:Fc0a2a3:",))
             .unwrap();
-        let comparison =
-            bool::extract_bound(&comp_op.call_method1("__eq__", (0.0,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            comp_op
+                .call_method1("__eq__", (0.0,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         // Get error
@@ -309,18 +372,24 @@ fn boson_system_test_add_operator_product_remove() {
 /// Test keys function of MixedOperator
 #[test]
 fn test_keys_values() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
         let system = new_system(py, number_spins, number_bosons, number_fermions);
 
         let len_system = system.call_method0("__len__").unwrap();
-        let comparison =
-            bool::extract_bound(&len_system.call_method1("__eq__", (0_u64,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            len_system
+                .call_method1("__eq__", (0_u64,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
-        let empty_system = bool::extract_bound(&system.call_method0("is_empty").unwrap()).unwrap();
+        let empty_system =
+            bool::extract(system.call_method0("is_empty").unwrap().as_borrowed()).unwrap();
         assert!(empty_system);
 
         system
@@ -328,25 +397,36 @@ fn test_keys_values() {
             .unwrap();
 
         let keys_system = system.call_method0("keys").unwrap();
-        let comparison = bool::extract_bound(
-            &keys_system
+        let comparison = bool::extract(
+            keys_system
                 .call_method1("__eq__", (vec!["S0Z:Bc0a1:Fc0a0:"],))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
 
         let values_system = system.call_method0("values").unwrap();
-        let comparison =
-            bool::extract_bound(&values_system.call_method1("__eq__", (vec![0.1],)).unwrap())
-                .unwrap();
+        let comparison = bool::extract(
+            values_system
+                .call_method1("__eq__", (vec![0.1],))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
 
         let len_system = system.call_method0("__len__").unwrap();
-        let comparison =
-            bool::extract_bound(&len_system.call_method1("__eq__", (1_u64,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            len_system
+                .call_method1("__eq__", (1_u64,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
-        let empty_system = bool::extract_bound(&system.call_method0("is_empty").unwrap()).unwrap();
+        let empty_system =
+            bool::extract(system.call_method0("is_empty").unwrap().as_borrowed()).unwrap();
         assert!(!empty_system);
     });
 }
@@ -355,7 +435,7 @@ fn test_keys_values() {
 #[test_case(0.0,1.0;"imag")]
 #[test_case(0.7,0.7;"mixed")]
 fn test_truncate(re: f64, im: f64) {
-    pyo3::Python::with_gil(|py| {
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -466,19 +546,21 @@ fn test_truncate(re: f64, im: f64) {
             .unwrap();
 
         let comparison_system1 = system.call_method1("truncate", (5.0_f64,)).unwrap();
-        let comparison = bool::extract_bound(
-            &comparison_system1
+        let comparison = bool::extract(
+            comparison_system1
                 .call_method1("__eq__", (test_system1,))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
 
         let comparison_system2 = system.call_method1("truncate", (50.0_f64,)).unwrap();
-        let comparison = bool::extract_bound(
-            &comparison_system2
+        let comparison = bool::extract(
+            comparison_system2
                 .call_method1("__eq__", (test_system2,))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
@@ -488,8 +570,8 @@ fn test_truncate(re: f64, im: f64) {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_neg() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -503,8 +585,13 @@ fn test_neg() {
             .unwrap();
 
         let negated = system_0.call_method0("__neg__").unwrap();
-        let comparison =
-            bool::extract_bound(&negated.call_method1("__eq__", (system_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            negated
+                .call_method1("__eq__", (system_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -512,8 +599,8 @@ fn test_neg() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_add() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -534,8 +621,13 @@ fn test_add() {
             .unwrap();
 
         let added = system_0.call_method1("__add__", (system_1,)).unwrap();
-        let comparison =
-            bool::extract_bound(&added.call_method1("__eq__", (system_0_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            added
+                .call_method1("__eq__", (system_0_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -543,8 +635,8 @@ fn test_add() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_sub() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -565,8 +657,13 @@ fn test_sub() {
             .unwrap();
 
         let added = system_0.call_method1("__sub__", (system_1,)).unwrap();
-        let comparison =
-            bool::extract_bound(&added.call_method1("__eq__", (system_0_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            added
+                .call_method1("__eq__", (system_0_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -574,8 +671,8 @@ fn test_sub() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_mul_cf() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -590,8 +687,13 @@ fn test_mul_cf() {
             .unwrap();
 
         let added = system_0.call_method1("__mul__", (2.0,)).unwrap();
-        let comparison =
-            bool::extract_bound(&added.call_method1("__eq__", (system_0_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            added
+                .call_method1("__eq__", (system_0_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -599,8 +701,8 @@ fn test_mul_cf() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_mul_cc() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -625,8 +727,13 @@ fn test_mul_cc() {
                 },),
             )
             .unwrap();
-        let comparison =
-            bool::extract_bound(&added.call_method1("__eq__", (system_0_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            added
+                .call_method1("__eq__", (system_0_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -634,8 +741,8 @@ fn test_mul_cc() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_mul_self() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -656,8 +763,13 @@ fn test_mul_self() {
             .unwrap();
 
         let added = system_0.call_method1("__mul__", (system_1,)).unwrap();
-        let comparison =
-            bool::extract_bound(&added.call_method1("__eq__", (system_0_1,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            added
+                .call_method1("__eq__", (system_0_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
     });
 }
@@ -665,8 +777,8 @@ fn test_mul_self() {
 /// Test add magic method function of MixedOperator
 #[test]
 fn test_mul_error() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -683,8 +795,8 @@ fn test_mul_error() {
 /// Test copy and deepcopy functions of MixedOperator
 #[test]
 fn test_copy_deepcopy() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -696,12 +808,21 @@ fn test_copy_deepcopy() {
         let copy_system = system.call_method0("__copy__").unwrap();
         let deepcopy_system = system.call_method1("__deepcopy__", ("",)).unwrap();
 
-        let comparison_copy =
-            bool::extract_bound(&copy_system.call_method1("__eq__", (&system,)).unwrap()).unwrap();
+        let comparison_copy = bool::extract(
+            copy_system
+                .call_method1("__eq__", (&system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison_copy);
-        let comparison_deepcopy =
-            bool::extract_bound(&deepcopy_system.call_method1("__eq__", (system,)).unwrap())
-                .unwrap();
+        let comparison_deepcopy = bool::extract(
+            deepcopy_system
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison_deepcopy);
     });
 }
@@ -709,8 +830,8 @@ fn test_copy_deepcopy() {
 /// Test to_bincode and from_bincode functions of MixedOperator
 #[test]
 fn test_to_from_bincode() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -742,16 +863,21 @@ fn test_to_from_bincode() {
         let serialised_error = serialised.call_method0("to_bincode");
         assert!(serialised_error.is_err());
 
-        let comparison =
-            bool::extract_bound(&deserialised.call_method1("__eq__", (system,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            deserialised
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison)
     });
 }
 
 #[test]
 fn test_value_error_bincode() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -764,8 +890,8 @@ fn test_value_error_bincode() {
 /// Test to_ and from_json functions of MixedOperator
 #[test]
 fn test_to_from_json() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -792,8 +918,13 @@ fn test_to_from_json() {
         let deserialised_error = deserialised.call_method0("from_json");
         assert!(deserialised_error.is_err());
 
-        let comparison =
-            bool::extract_bound(&deserialised.call_method1("__eq__", (system,)).unwrap()).unwrap();
+        let comparison = bool::extract(
+            deserialised
+                .call_method1("__eq__", (system,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison)
     });
 }
@@ -801,8 +932,8 @@ fn test_to_from_json() {
 /// Test the __repr__ and __format__ functions
 #[test]
 fn test_format_repr() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -823,13 +954,13 @@ fn test_format_repr() {
             )
             .unwrap();
         let to_format = system.call_method1("__format__", ("",)).unwrap();
-        let format_op: String = String::extract_bound(&to_format).unwrap();
+        let format_op: String = String::extract(to_format.as_borrowed()).unwrap();
 
         let to_repr = system.call_method0("__repr__").unwrap();
-        let repr_op: String = String::extract_bound(&to_repr).unwrap();
+        let repr_op: String = String::extract(to_repr.as_borrowed()).unwrap();
 
         let to_str = system.call_method0("__str__").unwrap();
-        let str_op: String = String::extract_bound(&to_str).unwrap();
+        let str_op: String = String::extract(to_str.as_borrowed()).unwrap();
 
         assert_eq!(
             format_op,
@@ -849,8 +980,8 @@ fn test_format_repr() {
 /// Test the __richcmp__ function
 #[test]
 fn test_richcmp() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let number_spins: usize = 1;
         let number_bosons: usize = 1;
         let number_fermions: usize = 1;
@@ -863,26 +994,36 @@ fn test_richcmp() {
             .call_method1("add_operator_product", ("S0Z:Bc0a1:Fc0a2:", 0.1))
             .unwrap();
 
-        let comparison =
-            bool::extract_bound(&system_one.call_method1("__eq__", (&system_two,)).unwrap())
-                .unwrap();
+        let comparison = bool::extract(
+            system_one
+                .call_method1("__eq__", (&system_two,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(!comparison);
-        let comparison = bool::extract_bound(
-            &system_one
+        let comparison = bool::extract(
+            system_one
                 .call_method1("__eq__", ("S0Z:Bc0a1:Fc0a0:",))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(!comparison);
 
-        let comparison =
-            bool::extract_bound(&system_one.call_method1("__ne__", (system_two,)).unwrap())
-                .unwrap();
+        let comparison = bool::extract(
+            system_one
+                .call_method1("__ne__", (system_two,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(comparison);
-        let comparison = bool::extract_bound(
-            &system_one
+        let comparison = bool::extract(
+            system_one
                 .call_method1("__ne__", ("S0Z:Bc0a1:Fc0a0:",))
-                .unwrap(),
+                .unwrap()
+                .as_borrowed(),
         )
         .unwrap();
         assert!(comparison);
@@ -895,25 +1036,29 @@ fn test_richcmp() {
 #[cfg(feature = "json_schema")]
 #[test]
 fn test_json_schema() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let new = new_system(py, 1, 1, 1);
 
         let schema: String =
-            String::extract_bound(&new.call_method0("json_schema").unwrap()).unwrap();
+            String::extract(new.call_method0("json_schema").unwrap().as_borrowed()).unwrap();
         let rust_schema =
             serde_json::to_string_pretty(&schemars::schema_for!(MixedOperator)).unwrap();
         assert_eq!(schema, rust_schema);
 
         let version: String =
-            String::extract_bound(&new.call_method0("current_version").unwrap()).unwrap();
+            String::extract(new.call_method0("current_version").unwrap().as_borrowed()).unwrap();
         let rust_version = STRUQTURE_VERSION.to_string();
         assert_eq!(version, rust_version);
 
         new.call_method1("add_operator_product", ("S0Z:Bc0a1:Fc0a0:", 1.0))
             .unwrap();
-        let min_version: String =
-            String::extract_bound(&new.call_method0("min_supported_version").unwrap()).unwrap();
+        let min_version: String = String::extract(
+            new.call_method0("min_supported_version")
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         let rust_min_version = String::from("2.0.0");
         assert_eq!(min_version, rust_min_version);
     });
@@ -922,8 +1067,8 @@ fn test_json_schema() {
 #[cfg(feature = "struqture_1_import")]
 #[test]
 fn test_from_json_struqture_1() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let json_string: Bound<pyo3::types::PyString> = pyo3::types::PyString::new(py, "{\"number_spins\":[null],\"number_bosons\":[null],\"number_fermions\":[null],\"operator\":{\"items\":[[\"S0Z:Bc0a0:Fc1a1:\",1.0,0.0]],\"n_spins\":1,\"n_bosons\":1,\"n_fermions\":1,\"_struqture_version\":{\"major_version\":1,\"minor_version\":0}}}");
         let sys_2 = new_system(py, 1, 1, 1);
         sys_2
@@ -933,8 +1078,13 @@ fn test_from_json_struqture_1() {
         let sys_from_1 = sys_2
             .call_method1("from_json_struqture_1", (json_string,))
             .unwrap();
-        let equal =
-            bool::extract_bound(&sys_2.call_method1("__eq__", (sys_from_1,)).unwrap()).unwrap();
+        let equal = bool::extract(
+            sys_2
+                .call_method1("__eq__", (sys_from_1,))
+                .unwrap()
+                .as_borrowed(),
+        )
+        .unwrap();
         assert!(equal);
 
         let error_json_string: Bound<pyo3::types::PyString> = pyo3::types::PyString::new(py, "{\"number_spins\":[null],\"number_bosons\":[null],\"number_fermions\":[null],\"operator\":{\"items\":[[\"S0Z:Bc0a0:Fc1a1:\",1.0,0.0]],\"n_spins\":1,\"n_bosons\":1,\"n_fermions\":1,\"_struqture_version\":{\"major_version\":3-,\"minor_version\":0}}}");
@@ -945,15 +1095,16 @@ fn test_from_json_struqture_1() {
 
 #[test]
 fn test_pprint() {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
+    Python::initialize();
+    pyo3::Python::attach(|py| {
         let sys = new_system(py, 2, 2, 2);
         sys.call_method1(
             "add_operator_product",
             ("S1Z27Y:SI:BI:Bc14c18a27:Fc14c18a27:Fc14c18a27", 1.2),
         )
         .unwrap();
-        let pprint: String = String::extract_bound(&sys.call_method0("pprint").unwrap()).unwrap();
+        let pprint: String =
+            String::extract(sys.call_method0("pprint").unwrap().as_borrowed()).unwrap();
         assert_eq!(
             pprint,
             "(1.2e0 + i * 0e0) (z₁y₂₇⊗ I)⊗ (I⊗ b₁₄†b₁₈†b₂₇)⊗ (c₁₄†c₁₈†c₂₇⊗ c₁₄†c₁₈†c₂₇)\n"

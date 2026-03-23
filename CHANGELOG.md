@@ -4,6 +4,25 @@ This changelog track changes to the struqture project starting at version v1.0.0
 
 ## Unreleased
 
+## 2.5.0
+
+* Updated pyo3 dependency to 0.28.
+
+## 2.4.3
+
+* Fixed import issues with the openfermion interface.
+
+## 2.4.2
+
+* Moved `openfermion` to a test dependency.
+
+## 2.4.1
+
+* Fixed the documentation
+
+## 2.4.0
+
+* Added an OpenFermion interface.
 * Updated minimum supported Python version to 3.10.
 
 ## 2.3.2

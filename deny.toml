@@ -43,6 +43,7 @@ yanked = "deny"
 ignore = [
     #"RUSTSEC-0000-0000",
     "RUSTSEC-2024-0436",
+    "RUSTSEC-2025-0141",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -76,7 +77,8 @@ allow = [
     "BSD-2-Clause",
     "ISC",
     "CC0-1.0",
-    "Unicode-3.0"
+    "Unicode-3.0",
+    "Zlib",
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the
